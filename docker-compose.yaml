@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  whatsapp-svc:
+    image: resfulapis
+    # container_name: whatsapp-svc
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: production
+
+    # ports:
+    #   - "4000:4000"
+    # restart: always
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+    depends_on:
+      - resfulapis
+    ports:
+      - 4020:4020
