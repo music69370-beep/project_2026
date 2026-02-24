@@ -19,6 +19,6 @@ module.exports = (sequelize, DataTypes) => {
   User.associate = function (models) {
     // define association here
   };
-  // sequelize.sync();
+  sequelize.sync();
   return User;
 };
