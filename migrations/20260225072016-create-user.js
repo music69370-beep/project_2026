@@ -3,23 +3,27 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('Users', {
-      id: {
+      user_id: { // ປ່ຽນຈາກ id ເປັນ user_id ຕາມຮູບອອກແບບ
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      name: {
-        type: Sequelize.STRING
+      full_name: { // ໃຫ້ແນ່ໃຈວ່າເປັນ full_name
+        type: Sequelize.STRING(255)
       },
       email: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING(100)
       },
       password: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING(255)
       },
-      created_at: {
-        type: Sequelize.DATE
+      role: { // ຕັ້ງຄ່າເປັນ ENUM
+        type: Sequelize.ENUM('admin', 'user'),
+        defaultValue: 'user'
+      },
+      department: {
+        type: Sequelize.STRING(100)
       },
       createdAt: {
         allowNull: false,
