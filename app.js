@@ -14,24 +14,30 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-// 2. Load Routes ແບບບັງຄັບ (ໃຫ້ເຈົ້າກວດຊື່ Folder ແລະ ໄຟລ໌ໃຫ້ດີ)
-// ຖ້າ Folder ເຈົ້າຊື່ "routes" (ມີ s) ແລະ ໄຟລ໌ຊື່ "rooms.js" (ມີ s) ໃຫ້ໃຊ້ Code ນີ້:
-// ຕ້ອງມີແຖວ Import ກ່ອນຈຶ່ງເອົາໄປ use ໄດ້
+// 2. Load Routes
 try {
-    const equipmentRoutes = require('./routes/equipment'); // ກວດຊື່ໄຟລ໌ໃຫ້ຖືກ
+    // Import Routes
+    const equipmentRoutes = require('./routes/equipment');
+    const usersRoutes = require('./routes/users');
+    const roomsRoutes = require('./routes/rooms');
+    const cateringRoutes = require('./routes/catering');
+
+    // ສໍາລັບ Booking ເຮົາຈະໃຊ້ try-catch ແຍກ ເພື່ອບໍ່ໃຫ້ມັນຢຸດການເຮັດວຽກຂອງ Route ອື່ນຖ້າຫາໄຟລ໌ບໍ່ເຫັນ
     app.use('/api/equipment', equipmentRoutes);
-    console.log("✅ Load Equipment Route Success!");
-} catch (error) {
-    console.log("⚠️ ຍັງບໍ່ທັນມີໄຟລ໌ Equipment Route, ຂ້າມໄປກ່ອນ...");
-}
-try {
-    const users = require('./routes/users');
-    const rooms = require('./routes/rooms');
-    
-    app.use('/api/users', users);
-    app.use('/api/rooms', rooms);
-    
-    console.log("✅ Load Routes Success!");
+    app.use('/api/users', usersRoutes);
+    app.use('/api/rooms', roomsRoutes);
+    app.use('/api/catering', cateringRoutes);
+
+    // ກວດສອບວ່າໄຟລ໌ bookings.js ມີແລ້ວຫຼືຍັງ
+    try {
+        const bookingRoutes = require('./routes/bookings');
+        app.use('/api/bookings', bookingRoutes);
+        console.log("✅ Load Booking Route Success!");
+    } catch (e) {
+        console.log("ℹ️ Booking Route ຍັງບໍ່ທັນໄດ້ສ້າງ, ຂ້າມໄປກ່ອນ...");
+    }
+
+    console.log("🚀 Load All Active Routes Success!");
 } catch (error) {
     console.log("❌ Error Loading Routes:", error.message);
 }

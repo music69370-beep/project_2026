@@ -7,15 +7,18 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
+  // models/equipment.js
   Equipment.init({
-    equipment_name: DataTypes.STRING,
-    description: DataTypes.TEXT,
-    status: DataTypes.STRING
+    item_name: DataTypes.STRING,      // ປ່ຽນຈາກ equipment_name
+    unit: DataTypes.STRING,           // ເພີ່ມຕາມ Navicat
+    item_type: DataTypes.STRING,      // ເພີ່ມຕາມ Navicat
+    total_quantity: DataTypes.INTEGER // ເພີ່ມຕາມ Navicat
   }, {
     sequelize,
     modelName: 'Equipment',
-    tableName: 'equipment', // ຖ້າໃນ DB ບໍ່ມີ s, ບ່ອນນີ້ກໍຫ້າມມີ s
-    underscored: true,      // ໃຊ້ created_at, updated_at (ມີ _)
+    tableName: 'equipment',           // ຕ້ອງເປັນ 'equipment' (ບໍ່ມີ s) ຕາມ Navicat
+    underscored: false,               // ປ່ຽນເປັນ false ເພາະໃນ Navicat ໃຊ້ createdAt (ໂຕໃຫຍ່)
+    timestamps: true,                 // ໃຊ້ true ເພາະໃນ Navicat ມີ Column ນີ້ແລ້ວ
   });
   return Equipment;
 };

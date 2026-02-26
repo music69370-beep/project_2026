@@ -50,3 +50,39 @@ exports.createRoom = async (req, res) => {
         });
     }
 };
+// 3. ແກ້ໄຂຂໍ້ມູນຫ້ອງ (Update)
+exports.updateRoom = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const room = await Room.findByPk(id);
+
+        if (!room) {
+            return res.status(404).json({ message: "ບໍ່ພົບຂໍ້ມູນຫ້ອງທີ່ຕ້ອງການແກ້ໄຂ!" });
+        }
+
+        await room.update(req.body);
+        res.status(200).json({
+            message: "ແກ້ໄຂຂໍ້ມູນຫ້ອງສຳເລັດ!",
+            data: room
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// 4. ລຶບຂໍ້ມູນຫ້ອງ (Delete)
+exports.deleteRoom = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const room = await Room.findByPk(id);
+
+        if (!room) {
+            return res.status(404).json({ message: "ບໍ່ພົບຂໍ້ມູນຫ້ອງທີ່ຕ້ອງການລຶບ!" });
+        }
+
+        await room.destroy();
+        res.status(200).json({ message: "ລຶບຂໍ້ມູນຫ້ອງສຳເລັດແລ້ວ!" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
