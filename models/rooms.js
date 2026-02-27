@@ -1,31 +1,38 @@
 'use strict';
 const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
   class Room extends Model {
     static associate(models) {
-      // ບ່ອນນີ້ເອົາໄວ້ເຊື່ອມກັບ Booking ໃນອະນາຄົດ
+      // ຫ້ອງ 1 ຫ້ອງ ມີໄດ້ຫຼາຍການຈອງ (rooms.id -> bookings.room_id)
+      Room.hasMany(models.Booking, { foreignKey: 'room_id', as: 'bookings' });
     }
   }
-  // models/rooms.js
-// models/rooms.js
-Room.init({
-  room_name: {
-    type: DataTypes.STRING,
-    unique: true, // <--- ຫ້າມມີຊື່ຊໍ້າກັນໃນ Database
-    allowNull: false
-  },
-  location: DataTypes.STRING,
-  capacity: DataTypes.INTEGER,
-  image_url: DataTypes.STRING,
-  status: DataTypes.STRING
-}, {
-  sequelize,
-  modelName: 'Room',
-  tableName: 'rooms',
-  underscored: true,
-  timestamps: false, // ປ່ຽນເປັນ false ຕາມທີ່ເຮົາລົມກັນກ່ອນໜ້ານີ້
-});
+
+  Room.init({
+    id: { // ໃຊ້ id ເປັນ Primary Key ຕາມມາດຕະຖານ
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    room_name: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false
+    },
+    location: DataTypes.STRING,
+    capacity: DataTypes.INTEGER,
+    image_url: DataTypes.STRING,
+    status: DataTypes.STRING
+  }, {
+    sequelize,
+    modelName: 'Room',
+    tableName: 'rooms',
+    underscored: false, 
+    timestamps: true,
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  });
+
   return Room;
 };
-
-

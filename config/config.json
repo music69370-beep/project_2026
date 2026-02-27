@@ -5,7 +5,8 @@
     "database": "project_laoword",
     "host": "localhost",
     "dialect": "mysql",
-    "port":"3306"
+    "port":"3306",
+    "timezone": "+07:00"
   },
   "test": {
     "username": "root",

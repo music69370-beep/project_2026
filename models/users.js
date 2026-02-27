@@ -4,12 +4,14 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     static associate(models) {
-      // define association here
+      // ເຊື່ອມຫາ Booking ໂດຍໃຊ້ user_id ໃຫ້ກົງກັບຖານຂໍ້ມູນ
+      User.hasMany(models.Booking, { foreignKey: 'user_id', as: 'bookings' });
     }
   }
+
   User.init({
-    // 1. ເພີ່ມ user_id ໃຫ້ເປັນ Primary Key
-    user_id: {
+    // ຕ້ອງໃຊ້ user_id ຕາມທີ່ປາກົດໃນ Navicat ຂອງເຈົ້າ
+    user_id: { 
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
@@ -18,13 +20,12 @@ module.exports = (sequelize, DataTypes) => {
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true // ປ້ອງກັນ email ຊໍ້າກັນ
+      unique: true
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false
     },
-    // 2. ປ່ຽນ role ໃຫ້ເປັນ ENUM ຕາມທີ່ອອກແບບໄວ້
     role: {
       type: DataTypes.ENUM('admin', 'user'),
       defaultValue: 'user'
@@ -33,8 +34,10 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'User',
-    tableName: 'Users', // ໃຫ້ກົງກັບຊື່ Table ໃນ Database
-    timestamps: true    // ເກັບ createdAt ແລະ updatedAt ໄວ້ຕາມທີ່ຕົກລົງ
+    tableName: 'users',
+    underscored: false,
+    timestamps: true 
   });
+
   return User;
 };

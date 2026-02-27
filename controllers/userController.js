@@ -4,18 +4,23 @@ const models = require("../models/index");
 require("dotenv").config();
 
 // 1. ດຶງຂໍ້ມູນ User ທັງໝົດ
+// 1. ດຶງຂໍ້ມູນ User ທັງໝົດ
 exports.index = async (req, res, next) => {
   try {
-    const users = await models.User.findAll({
-      attributes: ["user_id", "full_name", "email", "role", "department", "createdAt"], // ປ່ຽນຕາມ Field ໃໝ່
-      order: [["user_id", "DESC"]],
-    });
+    // ດຶງແບບບໍ່ມີເງື່ອນໄຂໃດໆທັງສິ້ນ
+    const users = await models.User.findAll(); 
+    
+    console.log("--- DEBUG USERS ---");
+    console.log("Count:", users.length);
+    console.log("Data:", JSON.stringify(users, null, 2));
 
     res.status(200).json({
       message: "success",
+      count: users.length,
       data: users,
     });
   } catch (error) {
+    console.error("❌ Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -105,6 +110,8 @@ exports.destroy = async (req, res, next) => {
 };
 
 // 6. ເຂົ້າລະບົບ (Login)
+// controllers/userController.js
+
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -119,6 +126,7 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ message: "Email ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ" });
     }
 
+    // 🛠 ແກ້ໄຂບ່ອນນີ້: ປ່ຽນຈາກ id ເປັນ user_id
     const token = jwt.sign(
       { id: user.user_id, role: user.role }, 
       process.env.JWT_SECRET, 
@@ -129,12 +137,13 @@ exports.login = async (req, res, next) => {
       message: "Login Successful",
       access_token: token,
       data: {
-        id: user.user_id,
+        id: user.user_id, // 🛠 ປ່ຽນເປັນ user_id
         name: user.full_name,
         role: user.role
       },
     });
   } catch (error) {
+    console.error("❌ Login Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

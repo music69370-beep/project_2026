@@ -21,12 +21,14 @@ try {
     const usersRoutes = require('./routes/users');
     const roomsRoutes = require('./routes/rooms');
     const cateringRoutes = require('./routes/catering');
+    const bookingRouter = require('./routes/bookings');
 
     // ສໍາລັບ Booking ເຮົາຈະໃຊ້ try-catch ແຍກ ເພື່ອບໍ່ໃຫ້ມັນຢຸດການເຮັດວຽກຂອງ Route ອື່ນຖ້າຫາໄຟລ໌ບໍ່ເຫັນ
     app.use('/api/equipment', equipmentRoutes);
     app.use('/api/users', usersRoutes);
     app.use('/api/rooms', roomsRoutes);
     app.use('/api/catering', cateringRoutes);
+    app.use('/api/bookings', bookingRouter);
 
     // ກວດສອບວ່າໄຟລ໌ bookings.js ມີແລ້ວຫຼືຍັງ
     try {
