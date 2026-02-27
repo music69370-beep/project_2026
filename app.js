@@ -36,7 +36,7 @@ try {
         app.use('/api/bookings', bookingRoutes);
         console.log("✅ Load Booking Route Success!");
     } catch (e) {
-        console.log("ℹ️ Booking Route ຍັງບໍ່ທັນໄດ້ສ້າງ, ຂ້າມໄປກ່ອນ...");
+        console.log("ℹ️ Booking Route Error:", e.message);
     }
 
     console.log("🚀 Load All Active Routes Success!");
