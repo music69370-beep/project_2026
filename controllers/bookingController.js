@@ -1,167 +1,106 @@
 const db = require('../models');
-// ດຶງຄ່າຕ່າງໆອອກມາຈາກ db object ໃຫ້ຄົບຖ້ວນ
 const { Booking, Room, User, BookingEquipment, Equipment, sequelize } = db;
 const { Op } = db.Sequelize;
 
-// --- Helper Function: ກວດເຊັກເວລາຊ້ຳ ---
+// --- Helper Function: ກວດເຊັກເວລາທັບຊ້ອນ (Overlap) ---
 const checkOverlap = async (room_id, start_time, end_time, excludeBookingId = null) => {
-    const now = new Date();
     return await Booking.findOne({
         where: {
             room_id,
             status: { [Op.in]: ['Pending', 'Approved'] },
-            end_time: { [Op.gt]: now },
-            ...(excludeBookingId && { id: { [Op.ne]: excludeBookingId } }),
             [Op.and]: [
                 {
                     start_time: { [Op.lt]: new Date(end_time) },
                     end_time: { [Op.gt]: new Date(start_time) }
                 }
-            ]
+            ],
+            ...(excludeBookingId && { id: { [Op.ne]: excludeBookingId } })
         }
     });
 };
 
-// 1. ດຶງຂໍ້ມູນການຈອງ + ຂໍ້ມູນອຸປະກອນທີ່ຢືມ
+// 1. ດຶງຂໍ້ມູນການຈອງທັງໝົດ (ພ້ອມລາຍຊື່ອຸປະກອນ)
 exports.index = async (req, res) => {
     try {
-        const { room_name, start_date, end_date, page = 1, limit = 10 } = req.query;
-        const offset = (page - 1) * limit;
-        let whereCondition = {};
-
-        if (start_date && end_date) {
-            whereCondition.start_time = { [Op.between]: [new Date(start_date), new Date(end_date)] };
-        }
-
-        const { count, rows } = await Booking.findAndCountAll({
-            where: whereCondition,
-            limit: parseInt(limit),
-            offset: parseInt(offset),
+        const rows = await Booking.findAll({
             include: [
-                {
-                    model: Room,
-                    as: 'room',
-                    where: room_name ? { room_name: { [Op.like]: `%${room_name}%` } } : null,
-                    attributes: ['room_name', 'location']
-                },
-                {
-                    model: User,
-                    as: 'user',
-                    attributes: ['full_name', 'department']
-                },
-                {
-                    model: BookingEquipment,
-                    as: 'equipments',
-                    include: [{ model: Equipment, as: 'details' }]
+                { model: Room, as: 'room', attributes: ['room_name', 'location'] },
+                { model: User, as: 'user', attributes: ['full_name', 'department'] },
+                { 
+                    model: BookingEquipment, 
+                    as: 'equipments', 
+                    include: [{ model: Equipment, as: 'details' }] 
                 }
             ],
             order: [['createdAt', 'DESC']]
         });
-
-        const now = new Date();
-        const updatedRows = rows.map(item => {
-            const booking = item.get({ plain: true });
-            const startTime = new Date(booking.start_time);
-            const endTime = new Date(booking.end_time);
-
-            if (booking.status === 'Approved') {
-                if (now >= startTime && now <= endTime) {
-                    booking.status = 'In Progress';
-                } else if (now > endTime) {
-                    booking.status = 'Completed';
-                }
-            } else if (booking.status === 'Pending' && now > endTime) {
-                booking.status = 'Expired';
-            }
-            return booking;
-        });
-
-        res.status(200).json({
-            success: true,
-            data: updatedRows,
-            totalItems: count,
-            totalPages: Math.ceil(count / limit),
-            currentPage: parseInt(page)
-        });
+        res.status(200).json({ success: true, data: rows });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// 2. ສ້າງການຈອງໃໝ່ + ບັນທຶກອຸປະກອນ (Transaction)
+// 2. ສ້າງການຈອງໃໝ່ + ບັນທຶກອຸປະກອນ (ໃຊ້ Transaction)
 exports.insert = async (req, res) => {
-    // ເລີ່ມ Transaction
     const t = await sequelize.transaction();
-
     try {
         const { room_id, start_time, end_time, attendeeCount, title, equipments } = req.body;
-        const startDateObj = new Date(start_time);
-        const endDateObj = new Date(end_time);
 
-        if (startDateObj < new Date()) {
+        // Validation: ກວດເວລາຊ້ຳ
+        const isConflict = await checkOverlap(room_id, start_time, end_time);
+        if (isConflict) {
             await t.rollback();
-            return res.status(400).json({ message: "ບໍ່ສາມາດຈອງເວລາຍ້ອນຫຼັງໄດ້" });
+            return res.status(400).json({ message: "ເວລານີ້ມີຄົນຈອງແລ້ວ" });
         }
 
+        // Validation: ກວດຄວາມຈຸຫ້ອງ
         const room = await Room.findByPk(room_id);
         if (!room) {
             await t.rollback();
             return res.status(404).json({ message: "ບໍ່ພົບຂໍ້ມູນຫ້ອງ" });
         }
-
         if (attendeeCount > room.capacity) {
             await t.rollback();
-            return res.status(400).json({ message: `ຫ້ອງຮັບໄດ້ສູງສຸດ ${room.capacity} ຄົນ` });
+            return res.status(400).json({ message: `ຫ້ອງນີ້ຮັບໄດ້ສູງສຸດ ${room.capacity} ຄົນ` });
         }
 
-        const isConflict = await checkOverlap(room_id, startDateObj, endDateObj);
-        if (isConflict) {
-            await t.rollback();
-            return res.status(400).json({ message: "ຫ້ອງນີ້ຖືກຈອງແລ້ວໃນຊ່ວງເວລານີ້" });
-        }
-
-        // --- 1. ບັນທຶກການຈອງຫ້ອງ ---
+        // A. ບັນທຶກລົງ Table bookings
         const newBooking = await Booking.create({
             title,
             room_id,
-            start_time: startDateObj,
-            end_time: endDateObj,
+            start_time: new Date(start_time),
+            end_time: new Date(end_time),
             attendeeCount,
             user_id: req.user.id,
             status: 'Pending'
         }, { transaction: t });
 
-        // --- 2. ບັນທຶກອຸປະກອນ (ຖ້າມີ) ---
+        // B. ບັນທຶກລົງ Table bookingequipments (ໃຊ້ຊື່ Field ໃຫ້ກົງກັບ Model ທີ່ແກ້)
         if (equipments && Array.isArray(equipments) && equipments.length > 0) {
             const equipmentData = equipments.map(item => ({
-                booking_id: newBooking.id,
-                equipment_id: item.equipment_id,
+                Bookingid: newBooking.id,      // ອ້າງອີງຕາມ Model: Bookingid
+                Equipmentid: item.equipment_id, // ອ້າງອີງຕາມ Model: Equipmentid
                 quantity: item.quantity || 1
             }));
             await BookingEquipment.bulkCreate(equipmentData, { transaction: t });
         }
 
-        await t.commit(); 
-
-        res.status(201).json({
-            success: true,
-            message: "ສົ່ງຄຳຂໍຈອງຫ້ອງ ແລະ ອຸປະກອນສຳເລັດ",
-            data: newBooking
-        });
-
+        await t.commit();
+        res.status(201).json({ success: true, message: "ບັນທຶກການຈອງສຳເລັດ", data: newBooking });
     } catch (error) {
         if (t) await t.rollback();
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// 3. ອັບເດດການຈອງ
+// 3. ອັບເດດຂໍ້ມູນການຈອງ
 exports.update = async (req, res) => {
     try {
         const { id } = req.params;
         const booking = await Booking.findByPk(id);
         if (!booking) return res.status(404).json({ message: "ບໍ່ພົບຂໍ້ມູນການຈອງ" });
 
+        // ກວດສອບສິດ (Admin ຫຼື ເຈົ້າຂອງ)
         if (req.user.role !== 'admin' && booking.user_id !== req.user.id) {
             return res.status(403).json({ message: "ທ່ານບໍ່ມີສິດແກ້ໄຂການຈອງນີ້" });
         }
@@ -174,62 +113,63 @@ exports.update = async (req, res) => {
                 end_time || booking.end_time,
                 id
             );
-            if (isConflict) return res.status(400).json({ message: "ເວລາໃໝ່ມີຄົນຈອງແລ້ວ" });
+            if (isConflict) return res.status(400).json({ message: "ເວລາໃໝ່ທີ່ເລືອກມີຄົນຈອງແລ້ວ" });
         }
 
         await Booking.update(req.body, { where: { id } });
-        res.status(200).json({ success: true, message: "ອັບເດດສຳເລັດ" });
+        res.status(200).json({ success: true, message: "ອັບເດດຂໍ້ມູນສຳເລັດ" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// 4. Admin ອະນຸມັດ
-exports.approve = async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') return res.status(403).json({ message: "ສະເພາະ Admin ເທົ່ານັ້ນ" });
-
-        const booking = await Booking.findByPk(req.params.id);
-        if (!booking) return res.status(404).json({ message: "ບໍ່ພົບຂໍ້ມູນ" });
-
-        await Booking.update(req.body, { where: { id: req.params.id } });
-        res.status(200).json({ success: true, message: "ປ່ຽນສະຖານະສຳເລັດ" });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-// 5. ລຶບການຈອງ
+// 4. ລຶບການຈອງ
 exports.destroy = async (req, res) => {
     try {
         const booking = await Booking.findByPk(req.params.id);
         if (!booking) return res.status(404).json({ message: "ບໍ່ພົບຂໍ້ມູນ" });
 
         if (req.user.role !== 'admin' && booking.user_id !== req.user.id) {
-            return res.status(403).json({ message: "ບໍ່ມີສິດລຶບ" });
+            return res.status(403).json({ message: "ທ່ານບໍ່ມີສິດລຶບລາຍການນີ້" });
         }
 
         await Booking.destroy({ where: { id: req.params.id } });
-        res.status(200).json({ success: true, message: "ລຶບສຳເລັດ" });
+        res.status(200).json({ success: true, message: "ລຶບການຈອງສຳເລັດ" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// 6. ກວດສອບຫ້ອງຫວ່າງ
+// 5. Admin ອະນຸມັດ ຫຼື ປະຕິເສດ
+exports.approve = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: "ສະເພາະ Admin ເທົ່ານັ້ນທີ່ສາມາດອະນຸມັດໄດ້" });
+        }
+        const { status, admin_comment } = req.body;
+        const booking = await Booking.findByPk(req.params.id);
+        if (!booking) return res.status(404).json({ message: "ບໍ່ພົບຂໍ້ມູນ" });
+
+        await Booking.update({ status, admin_comment }, { where: { id: req.params.id } });
+        res.status(200).json({ success: true, message: `ປ່ຽນສະຖານະເປັນ ${status} ສຳເລັດ` });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 6. ກວດສອບຫ້ອງຫວ່າງຕາມຊ່ວງເວລາ
 exports.checkAvailableRooms = async (req, res) => {
     try {
         const { start_time, end_time } = req.query;
+        if (!start_time || !end_time) {
+            return res.status(400).json({ message: "ກະລຸນາລະບຸເວລາ start_time ແລະ end_time" });
+        }
+
         const busyBookings = await Booking.findAll({
             where: {
                 status: { [Op.in]: ['Approved', 'Pending'] },
-                end_time: { [Op.gt]: new Date() },
-                [Op.and]: [
-                    {
-                        start_time: { [Op.lt]: new Date(end_time) },
-                        end_time: { [Op.gt]: new Date(start_time) }
-                    }
-                ]
+                start_time: { [Op.lt]: new Date(end_time) },
+                end_time: { [Op.gt]: new Date(start_time) }
             },
             attributes: ['room_id'],
             raw: true
