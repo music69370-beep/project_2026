@@ -5,16 +5,12 @@ module.exports = (sequelize, DataTypes) => {
   class Booking extends Model {
     static associate(models) {
       // ເຊື່ອມຫາ Room (room_id -> rooms.id)
-      Booking.belongsTo(models.Room, { 
-        foreignKey: 'room_id', 
-        as: 'room' 
-      });
+      Booking.belongsTo(models.Room, { foreignKey: 'room_id', as: 'room' });
       
       // ເຊື່ອມຫາ User (user_id -> users.id)
-      Booking.belongsTo(models.User, { 
-        foreignKey: 'user_id', 
-        as: 'user' 
+      Booking.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' 
       });
+      this.hasMany(models.BookingEquipment, { foreignKey: 'booking_id', as: 'equipments' });
     }
   }
 
