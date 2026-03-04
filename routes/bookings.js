@@ -13,4 +13,4 @@ router.patch('/approve/:id', authMiddleware, bookingController.approve);
 // ກວດຫ້ອງຫວ່າງ (Frontend ຈະໃຊ້ໂຕນີ້ດຸຫຼາຍ)
 router.get('/check-availability', authMiddleware, bookingController.checkAvailableRooms);
 
-module.exports = router;
+module.exports = router;    
