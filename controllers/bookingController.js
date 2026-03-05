@@ -195,3 +195,42 @@ exports.checkAvailableRooms = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+exports.searchBooking = async (req, res) => {
+    try {
+        // 1. ຮັບຄ່າ title ຈາກ Query Params
+        const searchTitle = req.query.title;
+
+        // 2. ຖ້າບໍ່ມີການສົ່ງ title ມາ ຫຼື ເປັນຄ່າຫວ່າງ ໃຫ້ແຈ້ງເຕືອນ
+        if (!searchTitle || searchTitle.trim() === "") {
+            return res.status(400).json({ 
+                success: false, 
+                message: "ກະລຸນາລະບຸຊື່ຫົວຂໍ້ທີ່ຕ້ອງການຄົ້ນຫາ" 
+            });
+        }
+
+        // 3. ຄົ້ນຫາໂດຍໃຊ້ Op.like ແລະ ໃສ່ % ກຸ່ມໄວ້ທັງທາງໜ້າ ແລະ ທາງຫຼັງ
+        const data = await Booking.findAll({
+            where: {
+                title: {
+                    [Op.like]: `%${searchTitle}%` 
+                }
+            },
+            include: [
+                { model: Room, as: 'room', attributes: ['room_name', 'location'] },
+                { model: User, as: 'user', attributes: ['full_name', 'department'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+
+        // 4. ສົ່ງຜົນການຄົ້ນຫາ (ຖ້າບໍ່ເຈີ data ຈະເປັນ [])
+        res.status(200).json({
+            success: true,
+            count: data.length,
+            data: data
+        });
+
+    } catch (error) {
+        console.error("❌ Search Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
