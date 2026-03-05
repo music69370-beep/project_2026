@@ -4,13 +4,13 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Booking extends Model {
     static associate(models) {
-      // ເຊື່ອມຫາ Room (room_id -> rooms.id)
+      // ເຊື່ອມຫາ Room ແລະ User (ມີແລ້ວ)
       Booking.belongsTo(models.Room, { foreignKey: 'room_id', as: 'room' });
-      
-      // ເຊື່ອມຫາ User (user_id -> users.id)
-      Booking.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' 
-      });
+      Booking.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+
+      // ⭐ ຕ້ອງເພີ່ມ 2 ແຖວນີ້ເພື່ອໃຫ້ findAll ດຶງຂໍ້ມູນ Array ອອກມາໄດ້
       this.hasMany(models.BookingEquipment, { foreignKey: 'booking_id', as: 'equipments' });
+      this.hasMany(models.BookingCatering, { foreignKey: 'booking_id', as: 'caterings' });
     }
   }
 

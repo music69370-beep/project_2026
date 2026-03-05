@@ -1,5 +1,6 @@
 const db = require('../models');
-const { Booking, Room, User, BookingEquipment, Equipment, sequelize } = db;
+// ⭐ ຕື່ມ BookingCatering ແລະ CateringItem ໃສ່ໃນວົງເລັບນີ້
+const { Booking, Room, User, BookingEquipment, Equipment, BookingCatering, CateringItem, sequelize } = db;
 const { Op } = require('sequelize');
 // Helper Function: ກວດເຊັກເວລາທັບຊ້ອນ
 const checkOverlap = async (room_id, start_time, end_time, excludeBookingId = null) => {
@@ -19,6 +20,7 @@ const checkOverlap = async (room_id, start_time, end_time, excludeBookingId = nu
 };
 
 // 1. ດຶງຂໍ້ມູນການຈອງທັງໝົດ
+// 1. ດຶງຂໍ້ມູນການຈອງທັງໝົດ (ປັບປຸງໃໝ່)
 exports.index = async (req, res) => {
     try {
         const rows = await Booking.findAll({
@@ -28,13 +30,29 @@ exports.index = async (req, res) => {
                 { 
                     model: BookingEquipment, 
                     as: 'equipments', 
-                    include: [{ model: Equipment, as: 'details' }] 
+                    include: [{ 
+                        model: Equipment, 
+                        as: 'details', 
+                        attributes: ['item_name', 'unit'] 
+                    }] 
+                },
+                {
+                    model: BookingCatering,
+                    as: 'caterings',
+                    include: [
+                        {
+                            model: CateringItem,
+                            as: 'item_details',
+                            attributes: ['Name', 'Unit', 'price']
+                        }
+                    ]
                 }
             ],
             order: [['createdAt', 'DESC']]
         });
-        res.status(200).json({ success: true, data: rows });
+        res.status(200).json({ success: true, count: rows.length, data: rows });
     } catch (error) {
+        console.error("❌ Error index:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -43,16 +61,17 @@ exports.index = async (req, res) => {
 exports.insert = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { room_id, start_time, end_time, attendeeCount, title, equipments } = req.body;
+        // 1. ຮັບຄ່າທັງໝົດຈາກ req.body
+        const { room_id, start_time, end_time, attendeeCount, title, equipments, caterings } = req.body;
 
-        // --- 1. ກວດສອບວ່າຫ້ອງນີ້ມີຢູ່ແທ້ບໍ່ ---
+        // --- 2. ກວດສອບວ່າຫ້ອງນີ້ມີຢູ່ແທ້ບໍ່ ---
         const room = await Room.findByPk(room_id);
         if (!room) {
             await t.rollback();
             return res.status(404).json({ success: false, message: `❌ ບໍ່ພົບຫ້ອງ ID: ${room_id}` });
         }
 
-        // --- 2. ກວດສອບວ່າຫ້ອງຫວ່າງແທ້ບໍ່ (Overlap Check) ---
+        // --- 3. ກວດສອບວ່າຫ້ອງຫວ່າງແທ້ບໍ່ (Overlap Check) ---
         const isBusy = await Booking.findOne({
             where: {
                 room_id,
@@ -68,16 +87,16 @@ exports.insert = async (req, res) => {
             return res.status(400).json({ success: false, message: "❌ ຫ້ອງນີ້ຖືກຈອງແລ້ວໃນຊ່ວງເວລານີ້" });
         }
 
-        // --- 3. ກວດສອບຈຳນວນອຸປະກອນ (Stock Check) ---
-        if (equipments && equipments.length > 0) {
+        // --- 4. ກວດສອບ Stock ອຸປະກອນ (Equipments Validation) ---
+        if (equipments && Array.isArray(equipments) && equipments.length > 0) {
             for (const item of equipments) {
                 const equip = await Equipment.findByPk(item.equipment_id);
                 if (!equip) {
                     await t.rollback();
                     return res.status(404).json({ success: false, message: `❌ ບໍ່ພົບອຸປະກອນ ID: ${item.equipment_id}` });
                 }
-                // ກວດເບິ່ງ total_quantity ໃນ table equipment
-                if (equip.total_quantity < item.quantity) {
+                // ກວດ Stock (ຖ້າມີ Column total_quantity)
+                if (equip.total_quantity !== undefined && equip.total_quantity < item.quantity) {
                     await t.rollback();
                     return res.status(400).json({ 
                         success: false, 
@@ -87,12 +106,37 @@ exports.insert = async (req, res) => {
             }
         }
 
-        // --- 4. ຖ້າຜ່ານເງື່ອນໄຂທັງໝົດ ກໍບັນທຶກຂໍ້ມູນ ---
+        // --- 5. ກວດສອບ Stock ອາຫານ/ເຄື່ອງດື່ມ (Catering Validation) ---
+        if (caterings && Array.isArray(caterings) && caterings.length > 0) {
+            for (const cat of caterings) {
+                const foodItem = await CateringItem.findByPk(cat.cateringItem_id);
+                if (!foodItem) {
+                    await t.rollback();
+                    return res.status(404).json({ success: false, message: `❌ ບໍ່ພົບລາຍການອາຫານ ID: ${cat.cateringItem_id}` });
+                }
+                // ກວດ Stock ອາຫານ (ຖ້າມີ Column total_quantity ໃນ table cateringitems)
+                if (foodItem.total_quantity !== undefined && foodItem.total_quantity < cat.quantity) {
+                    await t.rollback();
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `❌ ${foodItem.Name || foodItem.item_name} ມີບໍ່ພໍ (ມີ: ${foodItem.total_quantity}, ຂໍຈອງ: ${cat.quantity})` 
+                    });
+                }
+            }
+        }
+
+        // --- 6. ບັນທຶກຂໍ້ມູນການຈອງຫຼັກ ---
         const newBooking = await Booking.create({
-            title, room_id, user_id: req.user.id,
-            start_time, end_time, attendeeCount, status: 'Pending'
+            title, 
+            room_id, 
+            user_id: req.user.id,
+            start_time, 
+            end_time, 
+            attendeeCount, 
+            status: 'Pending'
         }, { transaction: t });
 
+        // --- 7. ບັນທຶກອຸປະກອນລົງ Table BookingEquipments ---
         if (equipments && equipments.length > 0) {
             const equipmentData = equipments.map(item => ({
                 booking_id: newBooking.id,
@@ -102,11 +146,28 @@ exports.insert = async (req, res) => {
             await BookingEquipment.bulkCreate(equipmentData, { transaction: t });
         }
 
+        // --- 8. ບັນທຶກອາຫານລົງ Table BookingCaterings ---
+        if (caterings && caterings.length > 0) {
+            const cateringData = caterings.map(item => ({
+                booking_id: newBooking.id,
+                cateringItem_id: item.cateringItem_id,
+                quantity: item.quantity
+            }));
+            await BookingCatering.bulkCreate(cateringData, { transaction: t });
+        }
+
+        // ຖ້າທຸກຢ່າງຜ່ານໝົດ ໃຫ້ Commit Transaction
         await t.commit();
-        res.status(201).json({ success: true, message: "✅ ບັນທຶກການຈອງສຳເລັດ!", data: newBooking });
+        res.status(201).json({ 
+            success: true, 
+            message: "✅ ບັນທຶກການຈອງ, ອຸປະກອນ ແລະ ອາຫານສຳເລັດ!", 
+            booking_id: newBooking.id 
+        });
 
     } catch (error) {
+        // ຖ້າ Error ໃຫ້ Rollback ຂໍ້ມູນທັງໝົດທີ່ເຄີຍພະຍາຍາມບັນທຶກໃນ Transaction ນີ້
         if (t) await t.rollback();
+        console.error("❌ Error ໃນການ Insert Booking:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
