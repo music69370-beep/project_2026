@@ -1,24 +1,22 @@
-'use strict';
-const { Model } = require('sequelize');
-
+// models/equipment.js
+// models/equipment.js
 module.exports = (sequelize, DataTypes) => {
-  class Equipment extends Model {
-    static associate(models) {
-      // define association here
+  const Equipment = sequelize.define('Equipment', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    item_name: DataTypes.STRING,
+    item_type: DataTypes.STRING,
+    unit: DataTypes.STRING,
+    total_quantity: { // ⭐ ໃຊ້ total_quantity ໃຫ້ກົງກັບ Navicat ໃນ table equipment
+        type: DataTypes.INTEGER
     }
-  }
-  // models/equipment.js
-  Equipment.init({
-    item_name: DataTypes.STRING,      // ປ່ຽນຈາກ equipment_name
-    unit: DataTypes.STRING,           // ເພີ່ມຕາມ Navicat
-    item_type: DataTypes.STRING,      // ເພີ່ມຕາມ Navicat
-    total_quantity: DataTypes.INTEGER // ເພີ່ມຕາມ Navicat
   }, {
-    sequelize,
-    modelName: 'Equipment',
-    tableName: 'equipment',           // ຕ້ອງເປັນ 'equipment' (ບໍ່ມີ s) ຕາມ Navicat
-    underscored: false,               // ປ່ຽນເປັນ false ເພາະໃນ Navicat ໃຊ້ createdAt (ໂຕໃຫຍ່)
-    timestamps: true,                 // ໃຊ້ true ເພາະໃນ Navicat ມີ Column ນີ້ແລ້ວ
+    tableName: 'equipment'
   });
+
+  Equipment.associate = (models) => {
+    Equipment.hasMany(models.BookingEquipment, { foreignKey: 'equipment_id', as: 'bookings' });
+  };
+
   return Equipment;
 };
+ 

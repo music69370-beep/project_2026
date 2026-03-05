@@ -4,23 +4,26 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class BookingEquipment extends Model {
     static associate(models) {
-      this.belongsTo(models.Booking, { foreignKey: 'Bookingid', as: 'booking' });
-      this.belongsTo(models.Equipment, { foreignKey: 'Equipmentid', as: 'details' });
+      // foreignKey ຕ້ອງເປັນໂຕນ້ອຍຕາມ SQL Log
+      this.belongsTo(models.Booking, { foreignKey: 'booking_id', as: 'booking' });
+      this.belongsTo(models.Equipment, { foreignKey: 'equipment_id', as: 'details' });
     }
   }
 
+  // models/bookingequipment.js
+// ... ສ່ວນອື່ນໆຄືເກົ່າ ...
+  // models/bookingequipment.js
+// ... ສ່ວນອື່ນໆ ...
   BookingEquipment.init({
-    Bookingid: {
+    booking_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      field: 'booking_id' // ⭐ ບອກໃຫ້ Sequelize ໄປຫາ column booking_id ໃນ DB
+      allowNull: false
     },
-    Equipmentid: {
+    equipment_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      field: 'equipment_id' // ⭐ ບອກໃຫ້ Sequelize ໄປຫາ column equipment_id ໃນ DB
+      allowNull: false
     },
-    quantity: {
+    quantity: { // ⭐ ໃຊ້ quantity ໃຫ້ກົງກັບ Navicat ໃນ table bookingequipments
       type: DataTypes.INTEGER,
       defaultValue: 1
     }
