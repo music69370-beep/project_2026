@@ -1,5 +1,6 @@
 const db = require('../models');
 const { Booking, Room, User, BookingEquipment, Equipment, sequelize } = db;
+const { Op } = require('sequelize');
 // Helper Function: ກວດເຊັກເວລາທັບຊ້ອນ
 const checkOverlap = async (room_id, start_time, end_time, excludeBookingId = null) => {
     return await Booking.findOne({
@@ -44,36 +45,68 @@ exports.insert = async (req, res) => {
     try {
         const { room_id, start_time, end_time, attendeeCount, title, equipments } = req.body;
 
-        // 1. ສ້າງຂໍ້ມູນການຈອງຫຼັກ
+        // --- 1. ກວດສອບວ່າຫ້ອງນີ້ມີຢູ່ແທ້ບໍ່ ---
+        const room = await Room.findByPk(room_id);
+        if (!room) {
+            await t.rollback();
+            return res.status(404).json({ success: false, message: `❌ ບໍ່ພົບຫ້ອງ ID: ${room_id}` });
+        }
+
+        // --- 2. ກວດສອບວ່າຫ້ອງຫວ່າງແທ້ບໍ່ (Overlap Check) ---
+        const isBusy = await Booking.findOne({
+            where: {
+                room_id,
+                status: { [Op.in]: ['Approved', 'Pending'] },
+                [Op.and]: [
+                    { start_time: { [Op.lt]: end_time } },
+                    { end_time: { [Op.gt]: start_time } }
+                ]
+            }
+        });
+        if (isBusy) {
+            await t.rollback();
+            return res.status(400).json({ success: false, message: "❌ ຫ້ອງນີ້ຖືກຈອງແລ້ວໃນຊ່ວງເວລານີ້" });
+        }
+
+        // --- 3. ກວດສອບຈຳນວນອຸປະກອນ (Stock Check) ---
+        if (equipments && equipments.length > 0) {
+            for (const item of equipments) {
+                const equip = await Equipment.findByPk(item.equipment_id);
+                if (!equip) {
+                    await t.rollback();
+                    return res.status(404).json({ success: false, message: `❌ ບໍ່ພົບອຸປະກອນ ID: ${item.equipment_id}` });
+                }
+                // ກວດເບິ່ງ total_quantity ໃນ table equipment
+                if (equip.total_quantity < item.quantity) {
+                    await t.rollback();
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `❌ ອຸປະກອນ ${equip.item_name} ມີບໍ່ພໍ (ມີ: ${equip.total_quantity}, ຂໍຈອງ: ${item.quantity})` 
+                    });
+                }
+            }
+        }
+
+        // --- 4. ຖ້າຜ່ານເງື່ອນໄຂທັງໝົດ ກໍບັນທຶກຂໍ້ມູນ ---
         const newBooking = await Booking.create({
-            title,
-            room_id,         // ໃຊ້ room_id ຕາມທີ່ເຈົ້າບອກ
-            user_id: req.user.id, // ໃຊ້ user_id ຕາມທີ່ເຈົ້າບອກ
-            start_time,
-            end_time,
-            attendeeCount,
-            status: 'Pending'
+            title, room_id, user_id: req.user.id,
+            start_time, end_time, attendeeCount, status: 'Pending'
         }, { transaction: t });
 
-        // 2. ຖ້າມີການເລືອກອຸປະກອນ
-        // ຫາສ່ວນ bulkCreate ໃນ insert function ແລ້ວແກ້ບ່ອນ map ແບບນີ້:
-        // ໃນ controllers/bookingController.js ສ່ວນ insert
-            // ໃນ controllers/bookingController.js (ສ່ວນ insert)
-        if (equipments && Array.isArray(equipments) && equipments.length > 0) {
+        if (equipments && equipments.length > 0) {
             const equipmentData = equipments.map(item => ({
                 booking_id: newBooking.id,
                 equipment_id: item.equipment_id,
-                quantity: item.quantity || 1 // ⭐ ສົ່ງໄປຫາ column quantity ໃນ table bookingequipments
+                quantity: item.quantity
             }));
-            
             await BookingEquipment.bulkCreate(equipmentData, { transaction: t });
         }
+
         await t.commit();
-        res.status(201).json({ success: true, message: "ບັນທຶກການຈອງ ແລະ ອຸປະກອນສຳເລັດ!", data: newBooking });
+        res.status(201).json({ success: true, message: "✅ ບັນທຶກການຈອງສຳເລັດ!", data: newBooking });
 
     } catch (error) {
         if (t) await t.rollback();
-        console.error("Error Insert:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -106,18 +139,59 @@ exports.approve = async (req, res) => {
 exports.checkAvailableRooms = async (req, res) => {
     try {
         const { start_time, end_time } = req.query;
+
+        if (!start_time || !end_time) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "ກະລຸນາລະບຸ start_time ແລະ end_time" 
+            });
+        }
+
+        // 1. ຫາ ID ຂອງຫ້ອງທີ່ "ບໍ່ຫວ່າງ" (ມີຄົນຈອງທີ່ຖືກ Approved ຫຼື Pending ໄວ້ແລ້ວ)
         const busyBookings = await Booking.findAll({
             where: {
-                status: { [Op.in]: ['Approved', 'Pending'] },
-                start_time: { [Op.lt]: new Date(end_time) },
-                end_time: { [Op.gt]: new Date(start_time) }
+                status: { [Op.in]: ['Approved', 'Pending'] }, // ເອົາສະເພາະການຈອງທີ່ມີຜົນ
+                [Op.and]: [
+                    {
+                        // Logic ກວດສອບເວລາຄາບກັນ (Overlap Logic)
+                        start_time: { [Op.lt]: end_time },
+                        end_time: { [Op.gt]: start_time }
+                    }
+                ]
             },
-            attributes: ['room_id'], raw: true
+            attributes: ['room_id'],
+            raw: true
         });
-        const busyRoomIds = busyBookings.map(b => b.room_id);
+
+        // ດຶງເອົາ ID ທີ່ບໍ່ຊ້ຳກັນອອກມາ
+        const busyRoomIds = [...new Set(busyBookings.map(b => b.room_id))];
+        
+        console.log("🚫 ຫ້ອງທີ່ບໍ່ຫວ່າງໃນຊ່ວງເວລານີ້:", busyRoomIds);
+
+        // 2. ຫາຫ້ອງທັງໝົດທີ່ "ບໍ່ຢູ່ໃນ" ລາຍຊື່ busyRoomIds
         const availableRooms = await Room.findAll({
-            where: { id: { [Op.notIn]: busyRoomIds.length > 0 ? busyRoomIds : [0] } }
+            where: {
+                id: {
+                    [Op.notIn]: busyRoomIds.length > 0 ? busyRoomIds : [0]
+                },
+                // ⭐ ໃຊ້ [Op.or] ເພື່ອໃຫ້ມັນຫາທັງ 'Available', 'active', ຫຼື 'Active' ກັນພາດ
+                [Op.or]: [
+                    { status: 'Available' },
+                    { status: 'active' },
+                    { status: 'Active' }
+                ]
+            }
         });
-        res.status(200).json({ success: true, data: availableRooms });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+
+        res.status(200).json({ 
+            success: true, 
+            count: availableRooms.length,
+            busy_ids: busyRoomIds,
+            data: availableRooms 
+        });
+
+    } catch (error) {
+        console.error("❌ Error ໃນ checkAvailableRooms:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
