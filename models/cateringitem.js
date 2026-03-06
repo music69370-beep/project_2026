@@ -7,24 +7,20 @@ module.exports = (sequelize, DataTypes) => {
       // ບ່ອນນີ້ສາມາດເຊື່ອມກັບ BookingCatering ໄດ້ໃນອະນາຄົດ
     }
   }
+  // ... (Code ສ່ວນເທິງຄືເກົ່າ) ...
   CateringItem.init({
     Name: {
       type: DataTypes.STRING,
       allowNull: false
     },
     Unit: DataTypes.STRING,
-    price: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true
-    },
+    // ⭐ ລຶບ price: { ... } ອອກຈາກບ່ອນນີ້
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     }
-  // models/cateringitem.js
-
-// ... (Code ສ່ວນເທິງຄືເກົ່າ) ...
   }, {
+// ... (ສ່ວນທີ່ເຫຼືອຄືເກົ່າ) ...
     sequelize,
     modelName: 'CateringItem',
     tableName: 'CateringItems', // <--- ແກ້ຈາກ 'catering_items' ເປັນ 'CateringItems' ໃຫ້ກົງກັບ Migration

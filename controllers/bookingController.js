@@ -43,7 +43,7 @@ exports.index = async (req, res) => {
                         {
                             model: CateringItem,
                             as: 'item_details',
-                            attributes: ['Name', 'Unit', 'price']
+                            attributes: ['Name', 'Unit']
                         }
                     ]
                 },
