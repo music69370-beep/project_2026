@@ -23,10 +23,13 @@ try {
     const cateringRoutes  = require('./routes/catering');
     const bookingRoutes   = require('./routes/bookings');
     // ⭐ ແກ້ບ່ອນນີ້ໃຫ້ກົງກັບຊື່ໄຟລ໌ແທ້ຂອງເຈົ້າ
-    const roomEquipmentRoutes = require('./routes/roomEquipmentRoute'); 
+    const roomEquipmentRoutes = require('./routes/roomEquipmentRoute');
+    const approvalRoutes = require('./routes/approvalRoute');
+
 
     // ປະກາດໃຊ້ API Paths
     app.use('/api/equipment', equipmentRoutes);
+    app.use('/api/approvals', approvalRoutes);
     app.use('/api/users', usersRoutes);
     app.use('/api/rooms', roomsRoutes);
     app.use('/api/catering', cateringRoutes);

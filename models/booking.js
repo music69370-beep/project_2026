@@ -11,6 +11,8 @@ module.exports = (sequelize, DataTypes) => {
       // ⭐ ຕ້ອງເພີ່ມ 2 ແຖວນີ້ເພື່ອໃຫ້ findAll ດຶງຂໍ້ມູນ Array ອອກມາໄດ້
       this.hasMany(models.BookingEquipment, { foreignKey: 'booking_id', as: 'equipments' });
       this.hasMany(models.BookingCatering, { foreignKey: 'booking_id', as: 'caterings' });
+      // ໃນ models/booking.js ບ່ອນ static associate
+      this.hasOne(models.Approval, { foreignKey: 'booking_id', as: 'approval_details' });
     }
   }
 

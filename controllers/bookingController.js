@@ -46,16 +46,24 @@ exports.index = async (req, res) => {
                             attributes: ['Name', 'Unit', 'price']
                         }
                     ]
+                },
+                // ເພີ່ມ Approval ເຂົ້າໃນ include list
+                {
+                    model: db.Approval, // ⭐ ດຶງຂໍ້ມູນການອະນຸມັດມາໂຊນຳ
+                    as: 'approval_details',
+                    include: [
+                        { model: User, as: 'admin_details', attributes: ['full_name'] }
+                    ]
                 }
-            ],
-            order: [['createdAt', 'DESC']]
-        });
-        res.status(200).json({ success: true, count: rows.length, data: rows });
-    } catch (error) {
-        console.error("❌ Error index:", error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
+                            ],
+                            order: [['createdAt', 'DESC']]
+                        });
+                        res.status(200).json({ success: true, count: rows.length, data: rows });
+                    } catch (error) {
+                        console.error("❌ Error index:", error);
+                        res.status(500).json({ success: false, message: error.message });
+                    }
+                };
 
 // 2. Insert ການຈອງໃໝ່ (Transaction)
 exports.insert = async (req, res) => {
@@ -69,6 +77,13 @@ exports.insert = async (req, res) => {
         if (!room) {
             await t.rollback();
             return res.status(404).json({ success: false, message: `❌ ບໍ່ພົບຫ້ອງ ID: ${room_id}` });
+        }
+        if (attendeeCount > room.capacity) {
+            await t.rollback();
+            return res.status(400).json({ 
+                success: false, 
+                message: `❌ ຫ້ອງນີ້ຮັບໄດ້ສູງສຸດ ${room.capacity} ຄົນ, ແຕ່ເຈົ້າລະບຸ ${attendeeCount} ຄົນ` 
+            });
         }
 
         // --- 3. ກວດສອບວ່າຫ້ອງຫວ່າງແທ້ບໍ່ (Overlap Check) ---
@@ -189,11 +204,30 @@ exports.destroy = async (req, res) => {
 
 // 5. Admin Approve
 exports.approve = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { status, admin_comment } = req.body;
-        await Booking.update({ status, admin_comment }, { where: { id: req.params.id } });
-        res.status(200).json({ success: true, message: "ປ່ຽນສະຖານະສຳເລັດ" });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+        const bookingId = req.params.id;
+        const adminId = req.user.id; // ດຶງຈາກ Token
+
+        // 1. ອັບເດດສະຖານະການຈອງ
+        await Booking.update({ status, admin_comment }, { where: { id: bookingId }, transaction: t });
+
+        // 2. ບັນທຶກປະຫວັດການຕັດສິນລົງ Table approvals
+        await db.Approval.create({
+            booking_id: bookingId,
+            user_id: adminId,
+            status: status,
+            comment: admin_comment,
+            approval_date: new Date()
+        }, { transaction: t });
+
+        await t.commit();
+        res.status(200).json({ success: true, message: `ດຳເນີນການ ${status} ສຳເລັດ` });
+    } catch (error) {
+        if (t) await t.rollback();
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
 
 // 6. ກວດຫ້ອງຫວ່າງ
