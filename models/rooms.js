@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // ຫ້ອງ 1 ຫ້ອງ ມີໄດ້ຫຼາຍການຈອງ (rooms.id -> bookings.room_id)
       Room.hasMany(models.Booking, { foreignKey: 'room_id', as: 'bookings' });
+      this.hasMany(models.RoomEquipment, { foreignKey: 'room_id', as: 'room_equipments' });
     }
   }
 

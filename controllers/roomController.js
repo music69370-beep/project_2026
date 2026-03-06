@@ -1,7 +1,9 @@
-const db = require('../models'); 
-const Room = db.Room;
+const db = require('../models');
+// ⭐ ປ່ຽນຈາກ const Room = db.Room; ມາເປັນແບບລຸ່ມນີ້:
+const { Room, RoomEquipment, Equipment } = db;
 
 // 1. ດຶງຂໍ້ມູນຫ້ອງທັງໝົດ
+// 1. ດຶງຂໍ້ມູນຫ້ອງທັງໝົດ (ແບບປັບປຸງໃໝ່)
 exports.getAllRooms = async (req, res) => {
     try {
         if (!Room) {
@@ -9,12 +11,30 @@ exports.getAllRooms = async (req, res) => {
         }
         
         const rooms = await Room.findAll({
+            // ⭐ ເພີ່ມ include ເຂົ້າໄປບ່ອນນີ້
+            include: [
+                {
+                    model: RoomEquipment,
+                    as: 'room_equipments', // ໃຫ້ກົງກັບ as ທີ່ຕັ້ງໄວ້ໃນ models/room.js
+                    include: [
+                        {
+                            model: Equipment,
+                            as: 'equipment_details', // ໃຫ້ກົງກັບ as ທີ່ຕັ້ງໄວ້ໃນ models/roomequipment.js
+                            attributes: ['item_name', 'unit'] // ດຶງເອົາແຕ່ຊື່ ແລະ ຫົວໜ່ວຍ
+                        }
+                    ]
+                }
+            ],
             order: [['id', 'DESC']] 
         });
-        res.status(200).json(rooms);
+
+        res.status(200).json({
+            success: true,
+            data: rooms
+        });
     } catch (error) {
         console.error("❌ Error at getAllRooms:", error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -84,5 +104,17 @@ exports.deleteRoom = async (req, res) => {
         res.status(200).json({ message: "ລຶບຂໍ້ມູນຫ້ອງສຳເລັດແລ້ວ!" });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+exports.addEquipmentToRoom = async (req, res) => {
+    try {
+        const { room_id, equipment_id, quantity } = req.body;
+        
+        // ບັນທຶກລົງ Table RoomEquipments ເລີຍ
+        const data = await RoomEquipment.create({ room_id, equipment_id, quantity });
+        
+        res.status(201).json({ success: true, message: "ເພີ່ມອຸປະກອນເຂົ້າຫ້ອງສຳເລັດ", data });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };

@@ -18,26 +18,21 @@ app.use(express.static(path.join(__dirname, "public")));
 try {
     // Import Routes
     const equipmentRoutes = require('./routes/equipment');
-    const usersRoutes = require('./routes/users');
-    const roomsRoutes = require('./routes/rooms');
-    const cateringRoutes = require('./routes/catering');
-    const bookingRouter = require('./routes/bookings');
+    const usersRoutes     = require('./routes/users');
+    const roomsRoutes     = require('./routes/rooms');
+    const cateringRoutes  = require('./routes/catering');
+    const bookingRoutes   = require('./routes/bookings');
+    // ⭐ ແກ້ບ່ອນນີ້ໃຫ້ກົງກັບຊື່ໄຟລ໌ແທ້ຂອງເຈົ້າ
+    const roomEquipmentRoutes = require('./routes/roomEquipmentRoute'); 
 
-    // ສໍາລັບ Booking ເຮົາຈະໃຊ້ try-catch ແຍກ ເພື່ອບໍ່ໃຫ້ມັນຢຸດການເຮັດວຽກຂອງ Route ອື່ນຖ້າຫາໄຟລ໌ບໍ່ເຫັນ
+    // ປະກາດໃຊ້ API Paths
     app.use('/api/equipment', equipmentRoutes);
     app.use('/api/users', usersRoutes);
     app.use('/api/rooms', roomsRoutes);
     app.use('/api/catering', cateringRoutes);
-    app.use('/api/bookings', bookingRouter);
-
-    // ກວດສອບວ່າໄຟລ໌ bookings.js ມີແລ້ວຫຼືຍັງ
-    try {
-        const bookingRoutes = require('./routes/bookings');
-        app.use('/api/bookings', bookingRoutes);
-        console.log("✅ Load Booking Route Success!");
-    } catch (e) {
-        console.log("ℹ️ Booking Route Error:", e.message);
-    }
+    app.use('/api/bookings', bookingRoutes);
+    // ⭐ ປະກາດໃຊ້ Path ສຳລັບຈັດການອຸປະກອນໃນຫ້ອງ
+    app.use('/api/roomequipment', roomEquipmentRoutes);
 
     console.log("🚀 Load All Active Routes Success!");
 } catch (error) {
