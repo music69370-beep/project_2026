@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const approvalController = require('../controllers/approvalController');
-// ຢ່າລືມໃສ່ Middleware ກວດສອບວ່າເປັນ Admin ບໍ່
-// const { isAdmin } = require('../middlewares/authMiddleware'); 
 
+// 1. ສົ່ງຜົນການອະນຸມັດ (POST)
 router.post('/submit', approvalController.submitApproval);
+
+// 2. ດຶງລາຍການຈອງທັງໝົດມາໂຊ (GET) ⭐ ເພີ່ມໂຕນີ້
+router.get('/', approvalController.getAllBookings);
 
 module.exports = router;
