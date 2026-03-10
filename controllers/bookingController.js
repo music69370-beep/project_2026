@@ -104,6 +104,12 @@ exports.insert = async (req, res) => {
 
         // --- 4. ກວດສອບ Stock ອຸປະກອນ (Equipments Validation) ---
         if (equipments && Array.isArray(equipments) && equipments.length > 0) {
+
+
+
+
+
+            
             for (const item of equipments) {
                 const equip = await Equipment.findByPk(item.equipment_id);
                 if (!equip) {
