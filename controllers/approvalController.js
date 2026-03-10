@@ -67,7 +67,7 @@ exports.submitApproval = async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { booking_id, status, comment } = req.body;
-        const admin_id = 7; 
+        const admin_id = req.user ? req.user.id : null;
 
         const booking = await Booking.findByPk(booking_id, {
             include: [{ model: User, as: 'user' }]
