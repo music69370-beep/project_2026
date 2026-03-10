@@ -4,7 +4,7 @@ const bookingController = require('../controllers/bookingController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 // --- 1. ພວກ Static Routes (ເອົາໄວ້ເທິງສຸດ) ---
-router.get('/search', bookingController.searchBooking);
+router.get('/search', authMiddleware, bookingController.searchBooking);
 router.get('/check-availability', authMiddleware, bookingController.checkAvailableRooms);
 
 // --- 2. ພວກ Base Routes ---

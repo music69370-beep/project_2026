@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'CateringItem',
     tableName: 'CateringItems', // <--- ແກ້ຈາກ 'catering_items' ເປັນ 'CateringItems' ໃຫ້ກົງກັບ Migration
-    underscored: false,          
+    underscored: false,            
     timestamps: true,
   });
   return CateringItem;
