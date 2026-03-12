@@ -14,22 +14,11 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
 // Load Routes
+// --- [Auto-Mapping Routes] ---
 try {
-    const equipmentRoutes = require('./routes/equipment');
-    const usersRoutes     = require('./routes/users');
-    const roomsRoutes     = require('./routes/rooms');
-    const cateringRoutes  = require('./routes/catering');
-    const bookingRoutes   = require('./routes/bookings');
-    const roomEquipmentRoutes = require('./routes/roomEquipmentRoute');
-    const approvalRoutes  = require('./routes/approvalRoute'); 
+    const routes = ['equipment', 'users', 'rooms', 'catering', 'bookings', ['roomequipment', 'roomEquipmentRoute'], ['approvals', 'approvalRoute']];
 
-    app.use('/api/equipment', equipmentRoutes);
-    app.use('/api/users', usersRoutes);
-    app.use('/api/rooms', roomsRoutes);
-    app.use('/api/catering', cateringRoutes);
-    app.use('/api/bookings', bookingRoutes);
-    app.use('/api/roomequipment', roomEquipmentRoutes);
-    app.use('/api/approvals', approvalRoutes);
+    routes.forEach(r => app.use(`/api/${Array.isArray(r) ? r[0] : r}`, require(`./routes/${Array.isArray(r) ? r[1] : r}`)));
 
     console.log("🚀 [System] Load All Active Routes Success!");
 } catch (error) {
