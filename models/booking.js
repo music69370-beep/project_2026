@@ -51,6 +51,23 @@ module.exports = (sequelize, DataTypes) => {
     attendeeCount: {
       type: DataTypes.INTEGER,
       defaultValue: 0
+    },
+    // ເພີ່ມໃສ່ໃນ Booking.init (...)
+    is_recurring: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    recur_pattern: {
+      type: DataTypes.ENUM('none', 'daily', 'weekly', 'monthly'),
+      defaultValue: 'none'
+    },
+    recur_count: { // ຈຳນວນຄັ້ງທີ່ຈະໃຫ້ຊ້ຳ
+      type: DataTypes.INTEGER,
+      defaultValue: 1
+    },
+    parent_booking_id: { // ເກັບ ID ຂອງແຖວທຳອິດ ເພື່ອມັດເປັນກຸ່ມດຽວກັນ
+      type: DataTypes.INTEGER,
+      allowNull: true
     }
   }, {
     sequelize,

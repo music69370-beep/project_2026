@@ -16,7 +16,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // Load Routes
 // --- [Auto-Mapping Routes] ---
 try {
-    const routes = ['equipment', 'users', 'rooms', 'catering', 'bookings', ['roomequipment', 'roomEquipmentRoute'], ['approvals', 'approvalRoute']];
+    const routes = ['equipment', 'users', 'rooms', 'dashboard', 'catering', 'bookings', ['roomequipment', 'roomEquipmentRoute'], ['approvals', 'approvalRoute']];
 
     routes.forEach(r => app.use(`/api/${Array.isArray(r) ? r[0] : r}`, require(`./routes/${Array.isArray(r) ? r[1] : r}`)));
 
