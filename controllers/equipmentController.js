@@ -54,7 +54,6 @@ exports.deleteEquipment = async (req, res) => {
         const { id } = req.params;
         const item = await Equipment.findByPk(id);
         if (!item) return res.status(404).json({ message: "ບໍ່ພົບອຸປະກອນ!" });
-
         await item.destroy();
         res.status(200).json({ message: "ລຶບສຳເລັດແລ້ວ!" });
     } catch (error) {
